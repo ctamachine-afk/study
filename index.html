@@ -546,8 +546,7 @@ async function loadState(){
   }
 }
 async function loadData(){
-  // 외부 data.json 사용 시 IndexedDB 커스텀 데이터는 무시
-  // (데이터 편집 탭에서 저장한 경우만 덮어씀)
+  // IndexedDB에 커스텀 데이터가 있으면 덮어씀
   try{
     const f=await idbGet('cfd');if(f&&f.length)FD=f;
     const c=await idbGet('ccd');if(c&&c.length)CD=c;
@@ -771,11 +770,8 @@ function renderChaps(){
   const con=document.getElementById('chap-con');con.innerHTML='';
   if(curSubj==='fin'||curSubj==='all'){if(curSubj==='all'){const h=document.createElement('div');h.className='subj-hdr';const dot=document.createElement('div');dot.className='subj-dot';dot.style.background='var(--fin)';const nm=document.createElement('span');nm.textContent='재무회계';h.appendChild(dot);h.appendChild(nm);con.appendChild(h);}FD.forEach((ch,ci)=>addChapRow(con,ch,ci,'fin'));}
   if(curSubj==='cost'||curSubj==='all'){if(curSubj==='all'){const h=document.createElement('div');h.className='subj-hdr';const dot=document.createElement('div');dot.className='subj-dot';dot.style.background='var(--cost)';const nm=document.createElement('span');nm.textContent='원가회계';h.appendChild(dot);h.appendChild(nm);con.appendChild(h);}CD.forEach((ch,ci)=>addChapRow(con,ch,ci,'cost'));}
-  if(curSubj==='tax'||curSubj==='all'){if(curSubj==='all'){const h=document.createElement('div');h.className='subj-hdr';const dot=document.createElement('div');dot.className='subj-dot';dot.style.background='var(--tax)';const nm=document.createElement('span');nm.textContent='세법';h.appendChild(dot);h.appendChild(nm);con.appendChild(h);}  const taxGroups=[
-    {prefix:'부-',label:'부가가치세'},
-    {prefix:'법-',label:'법인세'},
-    {prefix:'소-',label:'소득세'},
-  ];
+  if(curSubj==='tax'||curSubj==='all'){if(curSubj==='all'){const h=document.createElement('div');h.className='subj-hdr';const dot=document.createElement('div');dot.className='subj-dot';dot.style.background='var(--tax)';const nm=document.createElement('span');nm.textContent='세법';h.appendChild(dot);h.appendChild(nm);con.appendChild(h);}
+  TAXD.forEach((ch,ci)=>addChapRow(con,ch,ci,'tax'));
   }
 }
 function taxDisplayName(ch){return ch.replace(/^(부|법|소)-/,'');}
@@ -1209,22 +1205,30 @@ function lockDel(){if(!lockInput.length)return;lockInput=lockInput.slice(0,-1);u
 function updateLockDots(){for(let i=0;i<4;i++){const d=document.getElementById('ld'+i);d.classList.toggle('filled',i<lockInput.length);d.classList.remove('wrong');}}
 document.addEventListener('keydown',e=>{if(document.getElementById('lockscreen').style.display==='none')return;if(e.key>='0'&&e.key<='9')lockKey(e.key);if(e.key==='Backspace')lockDel();});
 
+// ══════════════════════════════════════════
+// ★ 핵심 수정: fetchData에서 FD/CD/TAXD도 초기화
+// ══════════════════════════════════════════
 async function fetchData(){
   try{
     const res=await fetch('./data.json');
-    if(!res.ok)throw new Error('data.json 로드 실패');
+    if(!res.ok)throw new Error('data.json 로드 실패 (HTTP '+res.status+')');
     const d=await res.json();
     DF=d.finData||[];
     DC=d.costData||[];
     DTAX=d.taxData||[];
+    // ★ 수정: 작업용 데이터도 함께 초기화
+    FD=JSON.parse(JSON.stringify(DF));
+    CD=JSON.parse(JSON.stringify(DC));
+    TAXD=JSON.parse(JSON.stringify(DTAX));
+    console.log('✅ data.json 로드 완료 — 재무:', FD.length, '장 / 원가:', CD.length, '장 / 세법:', TAXD.length, '장');
   }catch(e){
-    console.error('data.json 로드 오류:',e);
+    console.error('❌ data.json 로드 오류:', e);
     showToast('⚠️ data.json을 불러오지 못했어요');
   }
 }
 async function init(){
   if(checkLockSession())document.getElementById('lockscreen').style.display='none';
-  await fetchData();   // 1. data.json 기본 데이터 로드
+  await fetchData();   // 1. data.json 기본 데이터 로드 + FD/CD/TAXD 초기화
   await loadData();    // 2. IndexedDB 커스텀 데이터로 덮어쓰기 (있을 경우만)
   await loadState();   // 3. 진도/오답 상태 로드
   buildMaps();
