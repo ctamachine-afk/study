@@ -546,12 +546,18 @@ async function loadState(){
   }
 }
 async function loadData(){
+  // 외부 data.json 사용 시 IndexedDB 커스텀 데이터는 무시
+  // (데이터 편집 탭에서 저장한 경우만 덮어씀)
   try{
-    const f=await idbGet('cfd');if(f)FD=f;
-    const c=await idbGet('ccd');if(c)CD=c;
-    const t=await idbGet('ctaxd');if(t)TAXD=t;
+    const f=await idbGet('cfd');if(f&&f.length)FD=f;
+    const c=await idbGet('ccd');if(c&&c.length)CD=c;
+    const t=await idbGet('ctaxd');if(t&&t.length)TAXD=t;
   }catch(e){
-    try{const f=localStorage.getItem('cfd');if(f)FD=JSON.parse(f);const c=localStorage.getItem('ccd');if(c)CD=JSON.parse(c);const t=localStorage.getItem('ctaxd');if(t)TAXD=JSON.parse(t);}catch(_){}
+    try{
+      const f=localStorage.getItem('cfd');if(f){const p=JSON.parse(f);if(p.length)FD=p;}
+      const c=localStorage.getItem('ccd');if(c){const p=JSON.parse(c);if(p.length)CD=p;}
+      const t=localStorage.getItem('ctaxd');if(t){const p=JSON.parse(t);if(p.length)TAXD=p;}
+    }catch(_){}
   }
 }
 async function saveSubjData(){
@@ -1218,9 +1224,9 @@ async function fetchData(){
 }
 async function init(){
   if(checkLockSession())document.getElementById('lockscreen').style.display='none';
-  await fetchData();
-  await loadState();
-  await loadData();
+  await fetchData();   // 1. data.json 기본 데이터 로드
+  await loadData();    // 2. IndexedDB 커스텀 데이터로 덮어쓰기 (있을 경우만)
+  await loadState();   // 3. 진도/오답 상태 로드
   buildMaps();
   const now=new Date();document.getElementById('today-date').textContent=`${now.getFullYear()}. ${now.getMonth()+1}. ${now.getDate()}`;
   buildDG();updateProgress();
