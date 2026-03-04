@@ -134,6 +134,7 @@ body{background:var(--bg2);min-height:100vh;font-family:'Inter',sans-serif;color
 .chip.done{opacity:.35;text-decoration:line-through;transform:none;box-shadow:none;}
 .cst{position:absolute;top:-5px;right:-5px;width:12px;height:12px;border-radius:50%;font-size:7px;display:none;align-items:center;justify-content:center;font-weight:700;}
 .chip.done .cst{display:flex;background:var(--green);color:#fff;}
+.chip-day{font-size:8px;font-weight:400;opacity:.55;margin-left:1px;vertical-align:super;}
 
 
 /* ── 장별 뷰 ── */
@@ -411,8 +412,10 @@ label.fbtn{cursor:pointer;}
   <div class="fbtns">
     <button class="fbtn" onclick="exportBackup()">💾 백업</button>
     <label class="fbtn">📂 복원<input type="file" accept=".json" style="display:none" onchange="importBackup(event)"></label>
-    <button class="fbtn gr" onclick="newRound()">📖 다음 회독</button>
-    <button class="fbtn" onclick="resetAll()">초기화</button>
+    <button class="fbtn gr" onclick="newRound()">📖 전체 다음 회독</button>
+    <button class="fbtn" onclick="resetSubj('fin')" title="재무회계 진도 초기화">🔄 재무</button>
+    <button class="fbtn" onclick="resetSubj('cost')" title="원가회계 진도 초기화">🔄 원가</button>
+    <button class="fbtn" onclick="resetSubj('tax')" title="세법 진도 초기화">🔄 세법</button>
   </div>
 </div>
 
@@ -559,12 +562,12 @@ const SUBJ_COLOR={fin:'var(--fin)',cost:'var(--cost)',tax:'var(--tax)'};
 // ══════════════════════════════════════════
 // 칩
 // ══════════════════════════════════════════
-function makeChip(subj,ci,type,num){
+function makeChip(subj,ci,type,num,day){
   const el=document.createElement('div');
   el.className='chip '+(CC[type]||'si');
   if(dn(subj,ci,type,num))el.classList.add('done');
   el.dataset.subj=subj;el.dataset.ci=ci;el.dataset.type=type;el.dataset.num=num;
-  el.textContent=num+'번';
+  el.innerHTML=num+'번'+(day?'<sup class="chip-day">'+day+'일</sup>':'');
   const cst=document.createElement('div');cst.className='cst';
   cst.textContent='✓';
   el.appendChild(cst);
@@ -771,7 +774,7 @@ function addChapRow(con,ch,ci,subj){
     if(!probs.length)return;
     const tl=document.createElement('div');tl.className='ps-t';tl.textContent=lbl;pp.appendChild(tl);
     const pc=document.createElement('div');pc.className='pchips';
-    probs.forEach(p=>{const c=makeChip(subj,ci,tp,p[0]);c.addEventListener('click',()=>setTimeout(()=>updateProgress(),0));pc.appendChild(c);});
+    probs.forEach(p=>{const c=makeChip(subj,ci,tp,p[0],p[1]);c.addEventListener('click',()=>setTimeout(()=>updateProgress(),0));pc.appendChild(c);});
     pp.appendChild(pc);
   });
   con.appendChild(row);con.appendChild(pp);
@@ -1067,10 +1070,21 @@ async function newRound(){
   buildDG();updateProgress();
 }
 async function resetAll(){
-  if(!confirm('진도를 모두 초기화할까요?'))return;
+  if(!confirm('전체 진도를 초기화할까요?'))return;
   S={};await saveState();curDay=null;
   const dp=document.getElementById('dpanel');dp.classList.remove('on');dp.innerHTML='';
   buildDG();if(curView==='chap')renderChaps();updateProgress();
+}
+async function resetSubj(subj){
+  const names={fin:'재무회계',cost:'원가회계',tax:'세법'};
+  const name=names[subj];
+  if(!confirm(name+' 진도를 초기화할까요?'))return;
+  const prefix=subj+'|';
+  Object.keys(S).forEach(k=>{if(k.startsWith(prefix))delete S[k];});
+  await saveState();curDay=null;
+  const dp=document.getElementById('dpanel');dp.classList.remove('on');dp.innerHTML='';
+  buildDG();if(curView==='chap')renderChaps();updateProgress();
+  showToast('✅ '+name+' 진도 초기화 완료');
 }
 
 // ══════════════════════════════════════════
