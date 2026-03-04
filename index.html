@@ -82,10 +82,10 @@ body{background:var(--bg2);min-height:100vh;font-family:'Inter',sans-serif;color
 .db.sel{background:var(--text);border-color:var(--text);color:#fff;}
 .db.full{background:var(--cost-bg);border-color:var(--cost-border);color:var(--cost);}
 .db.part{border-color:var(--accent);color:var(--accent);}
-.db.tax-mode{width:64px;height:48px;font-size:11px;}
-.db.tax-mode .db-day{font-size:12px;font-weight:600;}
-.db.tax-mode .db-th{color:var(--theory);font-size:10px;}
-.db.tax-mode .db-ca{color:var(--tax);font-size:10px;}
+.db.tax-mode{width:72px;height:54px;font-size:10px;gap:1px;padding:4px 2px;}
+.db.tax-mode .db-day{font-size:11px;font-weight:600;}
+.db.tax-mode .db-th{color:var(--theory);font-size:9px;white-space:nowrap;}
+.db.tax-mode .db-ca{color:var(--tax);font-size:9px;white-space:nowrap;}
 .db.tax-mode.sel .db-th,.db.tax-mode.sel .db-ca{color:rgba(255,255,255,.7);}
 .db.tax-mode.full .db-th,.db.tax-mode.full .db-ca{color:var(--cost);}
 .dbadge{display:none;font-size:9px;font-weight:600;}
@@ -132,14 +132,9 @@ body{background:var(--bg2);min-height:100vh;font-family:'Inter',sans-serif;color
 .chip.ca{border-color:var(--tax-border);color:var(--tax);background:var(--tax-bg);}
 .chip:hover{filter:brightness(.95);transform:translateY(-1px);box-shadow:var(--shadow);}
 .chip.done{opacity:.35;text-decoration:line-through;transform:none;box-shadow:none;}
-.chip.wrong{border-color:#f5a0a0!important;color:var(--red)!important;background:#fff5f5!important;}
 .cst{position:absolute;top:-5px;right:-5px;width:12px;height:12px;border-radius:50%;font-size:7px;display:none;align-items:center;justify-content:center;font-weight:700;}
-.chip.done .cst,.chip.wrong .cst{display:flex;}
-.chip.done .cst{background:var(--green);color:#fff;}
-.chip.wrong .cst{background:var(--red);color:#fff;}
-.cwb{position:absolute;top:-6px;left:-6px;width:14px;height:14px;border-radius:50%;background:var(--red);color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s;cursor:pointer;z-index:10;box-shadow:var(--shadow);}
-.chip:hover .cwb{opacity:1;}
-.chip.wrong .cwb{opacity:1;background:var(--text3);}
+.chip.done .cst{display:flex;background:var(--green);color:#fff;}
+
 
 /* ── 장별 뷰 ── */
 .legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;font-size:11px;color:var(--text3);align-items:center;}
@@ -271,6 +266,7 @@ label.fbtn{cursor:pointer;}
   <div class="nav">
     <div class="nt on" id="nt-study" onclick="goNav('study')">📚 학습</div>
     <div class="nt" id="nt-data" onclick="goNav('data')">⚙️ 데이터 편집</div>
+    <div class="nt" id="nt-rand" onclick="goNav('rand')">🎲 랜덤 배정</div>
   </div>
 
   <!-- 학습 탭 -->
@@ -325,7 +321,7 @@ label.fbtn{cursor:pointer;}
         <div class="lgi"><div class="lgd" style="background:var(--basic)"></div>기본</div>
         <div class="lgi"><div class="lgd" style="background:var(--adv)"></div>심화</div>
         <div class="lgi"><div class="lgd" style="background:var(--tax)"></div>계산(세법)</div>
-        <span style="margin-left:auto;font-size:11px;color:var(--text3)">클릭: 완료 · ✕: 오답</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--text3)">클릭: 완료 토글</span>
       </div>
       <div id="chap-con"></div>
     </div>
@@ -367,8 +363,47 @@ label.fbtn{cursor:pointer;}
     </div>
   </div>
 
+  <!-- 랜덤 배정 탭 -->
+  <div id="nav-rand" style="display:none">
+    <div>
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;">🎲 일차 랜덤 배정</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.6;">
+        장별로 괄호 없는 문제번호를 입력하면, 설정한 일수에 맞춰 랜덤으로 일차를 배정합니다.<br>
+        <b>균등 + 같은 장 분산</b> 알고리즘으로 일차별 문제 수가 고르고, 같은 장 문제가 한 일차에 몰리지 않습니다.
+      </div>
+
+      <!-- 설정 -->
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:4px;">총 일수</div>
+          <input id="rand-days" type="number" min="1" max="100" value="8"
+            style="width:72px;font-family:'JetBrains Mono',monospace;font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r2);background:var(--bg);color:var(--text);outline:none;text-align:center;">
+        </div>
+        <button class="rbtn pri" onclick="runRandom()">🎲 랜덤 배정</button>
+        <button class="rbtn sec" onclick="addRandRow()">＋ 행 추가</button>
+      </div>
+
+      <!-- 입력 그리드 -->
+      <div class="ss-wrap" id="rand-grid-wrap"></div>
+      <button class="add-row-btn" onclick="addRandRow()" style="margin-bottom:16px;">＋ 새 행 추가</button>
+
+      <!-- 결과 -->
+      <div id="rand-result-area" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-size:11px;font-weight:600;color:var(--text3);">결과 — 문제번호(일차)</div>
+          <div style="display:flex;gap:6px;">
+            <button class="rbtn sec" onclick="copyRandAll()" style="font-size:11px;padding:3px 10px;">📋 전체 복사</button>
+          </div>
+        </div>
+        <!-- 결과 그리드 -->
+        <div class="ss-wrap" id="rand-result-grid" style="margin-bottom:12px;"></div>
+        <!-- 일차별 분포 -->
+        <div id="rand-preview" style="margin-bottom:12px;"></div>
+      </div>
+    </div>
+  </div>
+
   
-</div>
 
 <!-- 푸터 -->
 <div class="footer">
@@ -440,22 +475,33 @@ async function idbDel(key){
 async function saveState(){
   try{
     await idbSet('ts6',S);
-    await idbSet('tw6',W);
   }catch(e){
     // fallback: localStorage
-    try{localStorage.setItem('ts6',JSON.stringify(S));localStorage.setItem('tw6',JSON.stringify(W));}catch(_){}
+    try{localStorage.setItem('ts6',JSON.stringify(S));}catch(_){}
   }
 }
 async function loadState(){
   try{
     const s=await idbGet('ts6'); if(s)S=s;
-    const w=await idbGet('tw6'); if(w)W=w;
   }catch(e){
     // fallback: localStorage
-    try{const s=localStorage.getItem('ts6');if(s)S=JSON.parse(s);const w=localStorage.getItem('tw6');if(w)W=JSON.parse(w);}catch(_){}
+    try{const s=localStorage.getItem('ts6');if(s)S=JSON.parse(s);}catch(_){}
   }
 }
 async function loadData(){
+  // data.json이 변경됐으면 IndexedDB 커스텀 데이터를 무시하고 새 데이터 적용
+  const newHash=simpleHash(JSON.stringify([DF,DC,DTAX]));
+  let oldHash=null;
+  try{oldHash=await idbGet('data_hash');}catch(e){try{oldHash=localStorage.getItem('data_hash');}catch(_){}}
+  if(oldHash&&oldHash!==newHash){
+    // data.json이 바뀜 → 커스텀 데이터 삭제, 새 데이터 적용
+    try{await idbDel('cfd');await idbDel('ccd');await idbDel('ctaxd');await idbSet('data_hash',newHash);}
+    catch(e){try{localStorage.removeItem('cfd');localStorage.removeItem('ccd');localStorage.removeItem('ctaxd');localStorage.setItem('data_hash',newHash);}catch(_){}}
+    console.log('🔄 data.json 변경 감지 → 새 데이터 적용');
+    return;
+  }
+  // 해시 저장 (첫 실행 또는 동일)
+  try{await idbSet('data_hash',newHash);}catch(e){try{localStorage.setItem('data_hash',newHash);}catch(_){}}
   // IndexedDB에 커스텀 데이터가 있으면 덮어씀
   try{
     const f=await idbGet('cfd');if(f&&f.length)FD=f;
@@ -468,6 +514,9 @@ async function loadData(){
       const t=localStorage.getItem('ctaxd');if(t){const p=JSON.parse(t);if(p.length)TAXD=p;}
     }catch(_){}
   }
+}
+function simpleHash(str){
+  let h=0;for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i);h|=0;}return String(h);
 }
 async function saveSubjData(){
   try{await idbSet('cfd',FD);await idbSet('ccd',CD);await idbSet('ctaxd',TAXD);}
@@ -490,13 +539,12 @@ function buildMaps(){
 // ══════════════════════════════════════════
 // 상태
 // ══════════════════════════════════════════
-let S={},W={};
+let S={};
 let curDay=null,curView='day',curSubj='fin',curNav='study';
 let curEdSubj='fin',curEdMode='grid',edRows=[];
 
 function gk(s,ci,t,n){return s+'|'+ci+'|'+t+'|'+n;}
 function dn(s,ci,t,n){return!!S[gk(s,ci,t,n)];}
-function wg(s,ci,t,n){return!!W[gk(s,ci,t,n)];}
 
 // XSS 방지 헬퍼
 function escapeHtml(str){
@@ -515,23 +563,19 @@ function makeChip(subj,ci,type,num){
   const el=document.createElement('div');
   el.className='chip '+(CC[type]||'si');
   if(dn(subj,ci,type,num))el.classList.add('done');
-  if(wg(subj,ci,type,num))el.classList.add('wrong');
   el.dataset.subj=subj;el.dataset.ci=ci;el.dataset.type=type;el.dataset.num=num;
   el.textContent=num+'번';
   const cst=document.createElement('div');cst.className='cst';
-  cst.textContent=wg(subj,ci,type,num)?'✕':'✓';
+  cst.textContent='✓';
   el.appendChild(cst);
-  const wb=document.createElement('div');wb.className='cwb';wb.textContent='✕';
-  wb.addEventListener('click',e=>{e.stopPropagation();W[gk(subj,ci,type,num)]=!W[gk(subj,ci,type,num)];saveState();refreshChip(el,subj,ci,type,num);});
-  el.appendChild(wb);
+
   el.addEventListener('click',()=>{S[gk(subj,ci,type,num)]=!S[gk(subj,ci,type,num)];saveState();refreshChip(el,subj,ci,type,num);refreshDPMeta(curDay);updateProgress();updateDBtns();});
   return el;
 }
 function refreshChip(el,subj,ci,type,num){
   el.classList.toggle('done',dn(subj,ci,type,num));
-  el.classList.toggle('wrong',wg(subj,ci,type,num));
   const cst=el.querySelector('.cst');
-  if(cst){cst.textContent=wg(subj,ci,type,num)?'✕':'✓';cst.style.display=(dn(subj,ci,type,num)||wg(subj,ci,type,num))?'flex':'none';}
+  if(cst){cst.style.display=dn(subj,ci,type,num)?'flex':'none';}
 }
 
 // ══════════════════════════════════════════
@@ -539,11 +583,12 @@ function refreshChip(el,subj,ci,type,num){
 // ══════════════════════════════════════════
 function goNav(n){
   curNav=n;
-  ['study','data'].forEach(id=>{
+  ['study','data','rand'].forEach(id=>{
     document.getElementById('nt-'+id).classList.toggle('on',id===n);
     document.getElementById('nav-'+id).style.display=id===n?'block':'none';
   });
   if(n==='data')renderEd();
+  if(n==='rand')renderRandGrid();
   }
 function goSubj(s){
   curSubj=s;
@@ -609,7 +654,7 @@ function renderDP(day){
   const subEl=document.createElement('div');subEl.className='dpanel-meta';subEl.id='dp-sub';subEl.textContent=ps.length+'문제 · '+dk+'개 완료';
   const abtn=document.createElement('button');abtn.className='toggle-all-btn '+(allD?'ad':'nd');abtn.textContent=allD?'전체 해제':'전체 완료';abtn.id='all-btn';abtn.onclick=()=>toggleAll(day);
   metaEl.appendChild(subEl);metaEl.appendChild(abtn);hdr.appendChild(titleEl);hdr.appendChild(metaEl);dp.appendChild(hdr);
-  const tip=document.createElement('div');tip.className='dpanel-tip';tip.textContent='클릭: 완료 토글 · 마우스 오버 후 ✕ 클릭: 오답 표시';dp.appendChild(tip);
+  const tip=document.createElement('div');tip.className='dpanel-tip';tip.textContent='클릭: 완료 토글';dp.appendChild(tip);
   // 내용
   const body=document.createElement('div');body.style.padding='12px 16px';
   const subjs=curSubj==='all'?['fin','cost','tax']:[curSubj];
@@ -982,7 +1027,7 @@ async function resetEdDef(){
 // 백업
 // ══════════════════════════════════════════
 function exportBackup(){
-  const data={version:2,date:new Date().toISOString(),progress:S,wrong:W,finData:FD,costData:CD,taxData:TAXD};
+  const data={version:2,date:new Date().toISOString(),progress:S,finData:FD,costData:CD,taxData:TAXD};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');
   const now=new Date();const stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0');
@@ -1000,7 +1045,7 @@ async function importBackup(e){
       if(data.costData&&!Array.isArray(data.costData))throw new Error('원가회계 데이터 형식 오류');
       if(data.taxData&&!Array.isArray(data.taxData))throw new Error('세법 데이터 형식 오류');
       if(!confirm('백업을 불러오면 현재 데이터가 교체됩니다. 계속할까요?'))return;
-      S=data.progress||{};W=data.wrong||{};
+      S=data.progress||{};
       if(data.finData)FD=data.finData;if(data.costData)CD=data.costData;if(data.taxData)TAXD=data.taxData;
       await saveState();await saveSubjData();
       buildMaps();buildDG();updateProgress();curDay=null;
@@ -1016,19 +1061,208 @@ async function importBackup(e){
 // 기타
 // ══════════════════════════════════════════
 async function newRound(){
-  if(!confirm('모든 문제를 미완료로 초기화할까요? (오답 유지)'))return;
+  if(!confirm('모든 문제를 미완료로 초기화할까요?'))return;
   S={};await saveState();curDay=null;
   const dp=document.getElementById('dpanel');dp.classList.remove('on');dp.innerHTML='';
   buildDG();updateProgress();
 }
 async function resetAll(){
-  if(!confirm('진도와 오답을 모두 초기화할까요?'))return;
-  S={};W={};await saveState();curDay=null;
+  if(!confirm('진도를 모두 초기화할까요?'))return;
+  S={};await saveState();curDay=null;
   const dp=document.getElementById('dpanel');dp.classList.remove('on');dp.innerHTML='';
   buildDG();if(curView==='chap')renderChaps();updateProgress();
 }
 
 // ══════════════════════════════════════════
+// 랜덤 배정
+// ══════════════════════════════════════════
+let randRows=[{ch:'',nums:''},{ch:'',nums:''},{ch:'',nums:''}];
+let randResult=[];
+
+function renderRandGrid(){
+  const wrap=document.getElementById('rand-grid-wrap');wrap.innerHTML='';
+  const tbl=document.createElement('table');tbl.className='ss-table';
+  const thead=document.createElement('thead');const htr=document.createElement('tr');
+  [{t:'#',w:'36px'},{t:'장 이름',cls:'ch-col'},{t:'문제번호 (쉼표 구분, 괄호 없이)',cls:'prob-col'},{t:'삭제',w:'44px'}].forEach(h=>{
+    const th=document.createElement('th');th.textContent=h.t;if(h.w)th.style.minWidth=h.w;if(h.cls)th.className=h.cls;htr.appendChild(th);
+  });
+  thead.appendChild(htr);tbl.appendChild(thead);
+  const tbody=document.createElement('tbody');
+  randRows.forEach((row,ri)=>{
+    const tr=document.createElement('tr');
+    const tdN=document.createElement('td');tdN.className='row-num';tdN.textContent=ri+1;tr.appendChild(tdN);
+    const tdCh=document.createElement('td');tdCh.className='cell-ch';
+    const inpCh=document.createElement('input');inpCh.value=row.ch;inpCh.placeholder='예) 4장 재고자산';
+    inpCh.addEventListener('input',()=>{randRows[ri].ch=inpCh.value;});
+    inpCh.addEventListener('paste',e=>{const raw=e.clipboardData.getData('text');if(/[\t\n]/.test(raw)){e.preventDefault();handleRandPaste(raw,ri);}});
+    tdCh.appendChild(inpCh);tr.appendChild(tdCh);
+    const tdP=document.createElement('td');tdP.className='cell-prob';
+    const taP=document.createElement('textarea');taP.value=row.nums;taP.rows=2;
+    taP.placeholder='예) 1, 2, 3, 4, 5';
+    taP.addEventListener('input',()=>{randRows[ri].nums=taP.value;taP.style.height='auto';taP.style.height=taP.scrollHeight+'px';});
+    taP.addEventListener('paste',e=>{
+      const raw=e.clipboardData.getData('text');
+      if(/\t/.test(raw)){e.preventDefault();handleRandPaste(raw,ri);}
+      else if(/\n/.test(raw)){e.preventDefault();
+        const cleaned=raw.replace(/\r\n/g,'\n').split('\n').map(s=>s.trim()).filter(Boolean).join(', ');
+        const s=taP.selectionStart,en=taP.selectionEnd,cur=taP.value;
+        taP.value=cur.slice(0,s)+cleaned+cur.slice(en);randRows[ri].nums=taP.value;}
+    });
+    tdP.appendChild(taP);tr.appendChild(tdP);
+    const tdD=document.createElement('td');const delB=document.createElement('button');delB.className='row-del';delB.textContent='✕';
+    delB.onclick=()=>{if(randRows.length<=1){showToast('최소 1행 필요');return;}randRows.splice(ri,1);renderRandGrid();};
+    tdD.appendChild(delB);tr.appendChild(tdD);
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);wrap.appendChild(tbl);
+  setTimeout(()=>{wrap.querySelectorAll('textarea').forEach(ta=>{ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';});},0);
+}
+function handleRandPaste(raw,startRi){
+  const rows=raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n').trimEnd().split('\n').map(line=>line.split('\t').map(c=>c.trim()));
+  while(randRows.length<startRi+rows.length)randRows.push({ch:'',nums:''});
+  rows.forEach((cells,dr)=>{const ri=startRi+dr;if(cells[0]!==undefined)randRows[ri].ch=cells[0];if(cells[1]!==undefined)randRows[ri].nums=cells[1];});
+  renderRandGrid();showToast('✅ '+rows.length+'행 붙여넣기 완료');
+}
+function addRandRow(){
+  randRows.push({ch:'',nums:''});renderRandGrid();
+  setTimeout(()=>{const rows=document.querySelectorAll('#rand-grid-wrap tbody tr');if(rows.length)rows[rows.length-1].scrollIntoView({behavior:'smooth'});},50);
+}
+
+// ── 알고리즘: 균등 + 같은 장 분산 (그리디 버킷) ──
+// 핵심: 각 일차 버킷을 하나씩 채울 때 "이 버킷에 아직 없는 장"을 우선 선택
+// → 같은 장이 같은 일차에 몰리는 걸 원천 방지
+function runRandom(){
+  const chapters=[];let totalCount=0;
+  for(let ri=0;ri<randRows.length;ri++){
+    const row=randRows[ri],numsRaw=row.nums.trim();if(!numsRaw)continue;
+    const nums=numsRaw.split(/[,，\s]+/).map(s=>s.trim()).filter(Boolean).map(s=>{const n=parseInt(s);return isNaN(n)?null:n;}).filter(n=>n!==null);
+    if(!nums.length)continue;
+    chapters.push({ch:row.ch||('장 '+(ri+1)),ci:ri,nums});totalCount+=nums.length;
+  }
+  if(!totalCount){showToast('문제번호를 입력해주세요');return;}
+  const days=parseInt(document.getElementById('rand-days').value)||8;
+
+  // 1) 장별 문제 풀(pool) 생성 + 셔플
+  const pool=[];
+  chapters.forEach(ch=>{
+    const arr=ch.nums.map(num=>({ci:ch.ci,ch:ch.ch,num}));
+    for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}
+    arr.forEach(p=>pool.push(p));
+  });
+
+  // 2) 일차별 버킷 용량 계산 (균등)
+  const perDay=Math.floor(totalCount/days),extra=totalCount%days;
+  const buckets=[];
+  for(let d=0;d<days;d++)buckets.push({day:d+1,cap:perDay+(d<extra?1:0),items:[],chSet:new Set()});
+
+  // 3) 장별 남은 문제 큐 (문제 수 많은 장부터 처리)
+  const queues={};
+  chapters.forEach(ch=>{
+    queues[ch.ci]=pool.filter(p=>p.ci===ch.ci);
+  });
+  const chOrder=[...chapters].sort((a,b)=>b.nums.length-a.nums.length);
+
+  // 4) 그리디 배정: 문제 수 많은 장부터, 각 문제를
+  //    "해당 장이 아직 없고 + 여유가 있는 버킷 중 가장 비어있는 곳"에 배치
+  chOrder.forEach(ch=>{
+    const q=queues[ch.ci];
+    q.forEach(prob=>{
+      // 후보 버킷: 여유 있고, 이 장이 아직 없는 곳 → 가장 비어있는 순
+      let cands=buckets.filter(b=>b.items.length<b.cap&&!b.chSet.has(ch.ci));
+      if(!cands.length){
+        // 어쩔 수 없으면 여유만 있는 곳 (최소 겹침)
+        cands=buckets.filter(b=>b.items.length<b.cap);
+      }
+      if(!cands.length)return;// 이론상 발생 안 함
+      // 가장 덜 찬 버킷 선택 (같으면 랜덤)
+      cands.sort((a,b)=>a.items.length-b.items.length);
+      const minLen=cands[0].items.length;
+      const ties=cands.filter(b=>b.items.length===minLen);
+      const pick=ties[Math.floor(Math.random()*ties.length)];
+      pick.items.push(prob);
+      pick.chSet.add(ch.ci);
+    });
+  });
+
+  // 5) dayAssign 생성
+  const dayAssign=[];
+  buckets.forEach(b=>{b.items.forEach(p=>{dayAssign.push({...p,day:b.day});});});
+
+  // 결과 정렬
+  randResult=[];
+  chapters.forEach(ch=>{
+    const items=dayAssign.filter(p=>p.ci===ch.ci).sort((a,b)=>a.num-b.num);
+    randResult.push({ch:ch.ch,ci:ch.ci,items});
+  });
+  renderRandResult(days,dayAssign);
+  document.getElementById('rand-result-area').style.display='block';
+  showToast('✅ '+totalCount+'문제 → '+days+'일에 배정 완료');
+}
+
+function renderRandResult(days,dayAssign){
+  const wrap=document.getElementById('rand-result-grid');wrap.innerHTML='';
+  const tbl=document.createElement('table');tbl.className='ss-table';
+  const thead=document.createElement('thead');const htr=document.createElement('tr');
+  [{t:'#',w:'36px'},{t:'장 이름'},{t:'결과 — 문제번호(일차)',w:'240px'},{t:'복사',w:'52px'}].forEach(h=>{
+    const th=document.createElement('th');th.textContent=h.t;if(h.w)th.style.minWidth=h.w;htr.appendChild(th);
+  });
+  thead.appendChild(htr);tbl.appendChild(thead);
+  const tbody=document.createElement('tbody');
+  randResult.forEach((r,ri)=>{
+    const resultText=r.items.map(p=>p.num+'('+p.day+')').join(', ');
+    const tr=document.createElement('tr');
+    const tdN=document.createElement('td');tdN.className='row-num';tdN.textContent=ri+1;tr.appendChild(tdN);
+    const tdCh=document.createElement('td');tdCh.style.cssText='padding:8px 10px;font-size:12px;font-weight:500;';tdCh.textContent=r.ch;tr.appendChild(tdCh);
+    const tdR=document.createElement('td');tdR.style.cssText='padding:8px 10px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--text);line-height:1.7;';
+    tdR.textContent=resultText;tr.appendChild(tdR);
+    const tdC=document.createElement('td');tdC.style.textAlign='center';
+    const cpBtn=document.createElement('button');cpBtn.className='row-del';cpBtn.textContent='📋';cpBtn.title='이 행 복사';
+    cpBtn.style.cssText='color:var(--accent);font-size:14px;';
+    cpBtn.onclick=()=>{copyText(resultText,r.ch+' 복사됨');};
+    tdC.appendChild(cpBtn);tr.appendChild(tdC);
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);wrap.appendChild(tbl);
+
+  // 일차별 분포
+  const dist={};dayAssign.forEach(p=>{if(!dist[p.day])dist[p.day]=[];dist[p.day].push(p);});
+  let html='<div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px;">일차별 분포</div>';
+  html+='<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+  for(let d=1;d<=days;d++){
+    const items=dist[d]||[];
+    const chCounts={};items.forEach(p=>{chCounts[p.ch]=(chCounts[p.ch]||0)+1;});
+    html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;min-width:70px;">';
+    html+='<div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:3px;">'+d+'일차 <span style="color:var(--text3);font-weight:400;">'+items.length+'문제</span></div>';
+    html+='<div style="font-size:10px;color:var(--text2);font-family:\'JetBrains Mono\',monospace;line-height:1.5;">';
+    Object.entries(chCounts).forEach(([ch,cnt])=>{html+=escapeHtml(ch)+' ×'+cnt+'<br>';});
+    html+='</div></div>';
+  }
+  html+='</div>';
+  document.getElementById('rand-preview').innerHTML=html;
+}
+
+function copyRandAll(){
+  if(!randResult.length){showToast('먼저 랜덤 배정을 실행해주세요');return;}
+  const header='장 이름\t문제번호(일차)';
+  const rows=randResult.map(r=>r.ch+'\t'+r.items.map(p=>p.num+'('+p.day+')').join(', '));
+  const text=header+'\n'+rows.join('\n');
+  copyText(text,'TSV 복사 완료');
+}
+
+function copyText(text,label){
+  if(navigator.clipboard&&window.isSecureContext){
+    navigator.clipboard.writeText(text).then(()=>showToast('📋 '+(label||'복사 완료'))).catch(()=>copyFallback(text,label));
+  }else{copyFallback(text,label);}
+}
+function copyFallback(text,label){
+  const ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;left:-9999px;top:0;';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');showToast('📋 '+(label||'복사 완료'));}
+  catch(e){showToast('⚠️ 복사 실패 — 직접 선택해서 복사해주세요');}
+  document.body.removeChild(ta);
+}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2500);}
+
 // ══════════════════════════════════════════
 // 더미 데이터 (data.json 로드 실패 시 폴백)
 // [문제번호, 일차] 형식
