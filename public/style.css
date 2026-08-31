@@ -453,3 +453,43 @@ label.fbtn{cursor:pointer;}
   border-top:6px solid var(--text3);transition:transform .15s;}
 .sec-head.collapsed .sec-chev{transform:rotate(-90deg);}
 .sec-sum{font-size:12px;color:var(--text3);margin-left:auto;font-family:var(--font-mono);}
+
+/* ── 질문 순서 (랜덤 뽑기 · 질문자→답변자 순환) ── */
+.qo{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);
+  padding:14px 16px;margin-bottom:16px;}
+.qo-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.qo-title{font-size:13px;font-weight:600;color:var(--text);}
+.qo-actions{display:flex;gap:6px;margin-left:auto;}
+
+.qo-members{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.qo-mem{display:inline-flex;align-items:center;gap:4px;padding:3px 6px 3px 10px;
+  font-size:12px;color:var(--text2);background:var(--bg2);
+  border:1px solid var(--border);border-radius:100px;}
+.qo-mem-del{border:none;background:transparent;color:var(--text3);cursor:pointer;
+  font-size:10px;line-height:1;padding:2px 3px;font-family:inherit;}
+.qo-mem-del:hover{color:var(--red);}
+.qo-add{display:inline-flex;align-items:center;gap:2px;padding:2px 4px 2px 8px;
+  border:1px dashed var(--border2);border-radius:100px;}
+.qo-add input{width:76px;border:none;background:transparent;outline:none;
+  font-size:12px;color:var(--text);font-family:inherit;}
+.qo-add button{border:none;background:transparent;color:var(--text3);cursor:pointer;
+  font-size:13px;line-height:1;padding:2px 4px;font-family:inherit;}
+.qo-add button:hover{color:var(--accent);}
+
+.qo-empty{margin-top:10px;font-size:12px;color:var(--text3);line-height:1.7;}
+
+/* 뽑힌 순서 — 뽑은 그대로 왼쪽부터. 끝에서 처음으로 돌아오는 링을 ↻로 보인다 */
+.qo-ring{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px;}
+.qo-node{padding:4px 11px;font-size:12px;font-weight:500;border-radius:100px;
+  background:var(--bg2);border:1px solid var(--border);color:var(--text2);}
+.qo-node.asker{background:var(--accent);border-color:var(--accent);color:#fff;}
+.qo-node.answerer{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);}
+.qo-arrow{font-size:11px;color:var(--text3);}
+.qo-loop{font-size:12px;color:var(--text3);font-family:var(--font-mono);}
+
+.qo-turn{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px;
+  padding-top:12px;border-top:1px solid var(--border);}
+.qo-turn-lbl{font-size:11px;color:var(--text3);font-family:var(--font-mono);}
+.qo-pair{font-size:13px;color:var(--text2);}
+.qo-pair b{color:var(--text);font-weight:600;}
+.qo-turn-btns{display:flex;gap:6px;margin-left:auto;}

@@ -1104,7 +1104,8 @@ function copyEdDone(){
 // ══════════════════════════════════════════
 // 현재 상태 전체를 덩어리 하나로 (버전 스냅샷 · 클라우드 업로드 공용)
 function buildBlob(){
-  const data={version:4,date:new Date().toISOString(),progress:S,subjects:SUBJECTS,title:appTitle,userName};
+  const data={version:4,date:new Date().toISOString(),progress:S,subjects:SUBJECTS,title:appTitle,userName,
+              questionOrder:{members:QMEMBERS,order:QORDER,turn:qTurn}};
   SUBJECTS.forEach(s=>{data[s.dataKey]=DATA[s.id]||[];});
   return data;
 }
@@ -1219,6 +1220,7 @@ function validateBlob(data){
   if(!data.version||typeof data.version!=='number')throw new Error('올바른 백업 파일이 아니에요');
   if(data.progress&&typeof data.progress!=='object')throw new Error('진도 데이터 형식 오류');
   if(data.subjects&&!Array.isArray(data.subjects))throw new Error('과목 설정 형식 오류');
+  if(data.questionOrder&&typeof data.questionOrder!=='object')throw new Error('질문 순서 형식 오류');
   // legacy 키 검증 (호환성)
   if(data.finData&&!Array.isArray(data.finData))throw new Error('재무회계 데이터 형식 오류');
   if(data.costData&&!Array.isArray(data.costData))throw new Error('원가회계 데이터 형식 오류');
@@ -1243,6 +1245,12 @@ async function applyBlob(data){
     userName=data.userName;
     try{await idbSet('user_name',userName);}catch(_){}
     if(typeof window.__refreshUserLabel==='function') window.__refreshUserLabel();
+  }
+
+  // 0-2) 질문 순서 복원 (참여자 명단 · 뽑힌 순서 · 현재 차례)
+  if(data.questionOrder&&typeof data.questionOrder==='object'){
+    applyQOrderData(data.questionOrder);
+    try{await idbSet(QKEY,{members:QMEMBERS,order:QORDER,turn:qTurn});}catch(_){}
   }
 
   // 1) 기존 IndexedDB 정리 — 백업에 없는 과목 데이터 삭제
@@ -1283,6 +1291,7 @@ async function applyBlob(data){
   // 5) UI 전체 재구성
   buildMaps();
   renderStudyTabs();renderProgressCards();renderFooterBtns();
+  renderQOrder();
   buildDG();updateProgress();
   curDay=null;
   const dp=document.getElementById('dpanel');dp.classList.remove('on');dp.innerHTML='';
@@ -2228,6 +2237,143 @@ async function loadSelectedBook(){
 window.loadSelectedBook=loadSelectedBook;
 
 // ══════════════════════════════════════════
+// 질문 순서 — 랜덤 뽑기 + 질문자→답변자 순환(링)
+// ══════════════════════════════════════════
+// 규칙 두 가지를 코드로 고정한다.
+//  1) 뽑힌 순서는 닫힌 링이다. i번째가 질문하면 (i+1)번째가 답한다.
+//     마지막 사람은 다시 첫 번째 사람에게 질문한다. (a→b, b→c, c→a …)
+//  2) 한 번 뽑은 순서는 절대 재정렬하지 않는다. 차례가 넘어가도 배열은 그대로 두고
+//     가리키는 위치(qTurn)만 앞으로 민다. 순서를 새로 정하려면 다시 "뽑기"를 해야 하고,
+//     그때의 뽑기는 이전 결과와 무관한 새 랜덤이다.
+let QMEMBERS=[];   // [{id,name}] 참여자 — 등록된 순서(뽑기 전 명단)
+let QORDER=[];     // 뽑힌 순서 (참여자 id 배열) — 뽑은 그대로 보관
+let qTurn=0;       // QORDER에서 지금 질문할 사람의 자리
+
+const QKEY='question_order';
+
+async function loadQOrder(){
+  try{
+    const v=await idbGet(QKEY);
+    if(v&&typeof v==='object')applyQOrderData(v);
+  }catch(_){}
+}
+/** 저장본/백업본을 현재 상태에 반영한다. 명단에서 사라진 사람은 순서에서도 지운다. */
+function applyQOrderData(v){
+  QMEMBERS=Array.isArray(v.members)?v.members.filter(m=>m&&m.id).map(m=>({id:String(m.id),name:String(m.name||'')})):[];
+  const ids=QMEMBERS.map(m=>m.id);
+  QORDER=Array.isArray(v.order)?v.order.map(String).filter(id=>ids.includes(id)):[];
+  qTurn=Number.isInteger(v.turn)?v.turn:0;
+  if(QORDER.length)qTurn=((qTurn%QORDER.length)+QORDER.length)%QORDER.length; else qTurn=0;
+}
+async function saveQOrder(){
+  const blob={members:QMEMBERS,order:QORDER,turn:qTurn};
+  try{ await idbSet(QKEY,blob); }
+  catch(_){ try{ localStorage.setItem(QKEY,JSON.stringify(blob)); }catch(__){} }
+  window.CloudSync?.schedulePush();
+}
+
+const qName=id=>{const m=QMEMBERS.find(x=>x.id===id);return m?(m.name||'이름 없음'):'';};
+/** 링에서 i번째 자리의 답변자 = 바로 다음 자리(마지막이면 처음으로 돌아온다) */
+const qNextIdx=i=>QORDER.length?(i+1)%QORDER.length:0;
+
+/** 순서 뽑기 — 매번 새로 섞는다. 뽑은 결과는 그대로 두고 첫 자리부터 시작한다. */
+async function qDraw(){
+  if(QMEMBERS.length<2){showToast('참여자를 2명 이상 등록해 주세요');return;}
+  const ids=QMEMBERS.map(m=>m.id);
+  for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]];}
+  QORDER=ids;qTurn=0;
+  await saveQOrder();renderQOrder();
+  showToast('순서를 뽑았어요 — '+QORDER.map(qName).join(' → '));
+}
+/** 다음 차례 — 배열은 건드리지 않고 가리키는 자리만 한 칸 민다(끝나면 처음으로). */
+async function qNext(){
+  if(QORDER.length<2)return;
+  qTurn=qNextIdx(qTurn);await saveQOrder();renderQOrder();
+}
+async function qPrev(){
+  if(QORDER.length<2)return;
+  qTurn=(qTurn-1+QORDER.length)%QORDER.length;await saveQOrder();renderQOrder();
+}
+async function qClear(){
+  if(!QORDER.length)return;
+  if(!confirm('뽑은 순서를 지울까요? 참여자 명단은 그대로 남습니다.'))return;
+  QORDER=[];qTurn=0;await saveQOrder();renderQOrder();
+}
+
+async function qAddMember(){
+  const inp=document.getElementById('q-name-input');
+  const v=(inp?inp.value:'').trim();
+  if(!v){if(inp)inp.focus();return;}
+  if(QMEMBERS.some(m=>m.name===v)){showToast('이미 있는 이름이에요');return;}
+  QMEMBERS.push({id:Date.now()+'_'+Math.random().toString(36).slice(2,7),name:v});
+  if(inp)inp.value='';
+  await saveQOrder();renderQOrder();
+  const again=document.getElementById('q-name-input');if(again)again.focus();
+}
+async function qRemoveMember(id){
+  QMEMBERS=QMEMBERS.filter(m=>m.id!==id);
+  // 명단에서 빠지면 뽑힌 순서에서도 빼되, 남은 사람들의 상대 순서는 유지한다.
+  const at=QORDER.indexOf(id);
+  if(at>=0){
+    QORDER=QORDER.filter(x=>x!==id);
+    if(QORDER.length){ if(at<qTurn)qTurn--; qTurn=((qTurn%QORDER.length)+QORDER.length)%QORDER.length; }
+    else qTurn=0;
+  }
+  await saveQOrder();renderQOrder();
+}
+
+function renderQOrder(){
+  const con=document.getElementById('qorder-con');
+  if(!con)return;
+  const n=QORDER.length;
+  let html='<div class="qo">';
+
+  // 헤더 — 제목 + 뽑기 버튼
+  html+='<div class="qo-hdr"><div class="qo-title">질문 순서</div><div class="qo-actions">';
+  html+=`<button class="rbtn pri" onclick="qDraw()">${n?'다시 뽑기':'순서 뽑기'}</button>`;
+  if(n)html+='<button class="rbtn sec" onclick="qClear()">지우기</button>';
+  html+='</div></div>';
+
+  // 참여자 명단
+  html+='<div class="qo-members">';
+  QMEMBERS.forEach(m=>{
+    html+=`<span class="qo-mem">${escapeHtml(m.name)}<button class="qo-mem-del" title="빼기" onclick="qRemoveMember('${m.id}')">✕</button></span>`;
+  });
+  html+='<span class="qo-add">'+
+        '<input id="q-name-input" type="text" maxlength="20" placeholder="이름 추가" onkeydown="if(event.key===\'Enter\')qAddMember()">'+
+        '<button onclick="qAddMember()">＋</button></span>';
+  html+='</div>';
+
+  if(!n){
+    html+='<div class="qo-empty">참여자를 등록하고 <b>순서 뽑기</b>를 누르면 순서가 정해집니다.<br>'+
+          '한 번 뽑은 순서는 바뀌지 않고, 질문자 → 답변자가 계속 순환합니다. (a → b, b → c, c → a …)</div>';
+    html+='</div>';con.innerHTML=html;return;
+  }
+
+  // 뽑힌 순서 — 뽑은 그대로. 마지막에서 처음으로 돌아오는 링임을 화살표로 보인다.
+  html+='<div class="qo-ring">';
+  QORDER.forEach((id,i)=>{
+    const cls='qo-node'+(i===qTurn?' asker':'')+(i===qNextIdx(qTurn)?' answerer':'');
+    html+=`<span class="${cls}">${escapeHtml(qName(id))}</span>`;
+    html+='<span class="qo-arrow">→</span>';
+  });
+  html+=`<span class="qo-loop" title="마지막 사람은 다시 첫 번째 사람에게">${escapeHtml(qName(QORDER[0]))} ↻</span>`;
+  html+='</div>';
+
+  // 지금 차례
+  html+='<div class="qo-turn">'+
+        `<span class="qo-turn-lbl">${qTurn+1} / ${n}번째 차례</span>`+
+        `<span class="qo-pair"><b>${escapeHtml(qName(QORDER[qTurn]))}</b> 질문 → <b>${escapeHtml(qName(QORDER[qNextIdx(qTurn)]))}</b> 답변</span>`+
+        '<span class="qo-turn-btns">'+
+        '<button class="rbtn sec" onclick="qPrev()">이전</button>'+
+        '<button class="rbtn pri" onclick="qNext()">다음 차례</button>'+
+        '</span></div>';
+
+  html+='</div>';
+  con.innerHTML=html;
+}
+
+// ══════════════════════════════════════════
 // 사용자 이름 (로그인 후 1회 수집 · 동기화됨)
 // ══════════════════════════════════════════
 let userName='';
@@ -2284,10 +2430,12 @@ async function init(){
   await fetchData();
   await loadData();
   await loadState();
+  await loadQOrder();
   buildMaps();
   const now=new Date();document.getElementById('today-date').textContent=`${now.getFullYear()}. ${now.getMonth()+1}. ${now.getDate()}`;
   buildDG();updateProgress();
   renderStudyTabs();renderProgressCards();renderFooterBtns();updateProgress();
+  renderQOrder();
   document.getElementById('hdr-sub-names').textContent=SUBJECTS.map(s=>s.name).join(' · ');
   applyEntryGate();
   refreshOnboarding();
